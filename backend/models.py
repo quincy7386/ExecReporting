@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey
+from datetime import datetime, timezone
 from backend.database import Base
 
 
@@ -27,3 +28,12 @@ class Widget(Base):
     width = Column(Integer, nullable=False, default=4)
     height = Column(Integer, nullable=False, default=3)
     enabled = Column(Boolean, nullable=False, default=True)
+
+
+class WidgetCache(Base):
+    __tablename__ = "widget_cache"
+
+    widget_id = Column(Integer, ForeignKey("widgets.id", ondelete="CASCADE"), primary_key=True)
+    data = Column(Text, nullable=True)       # JSON-encoded result
+    error = Column(Text, nullable=True)      # last error message, if any
+    last_updated = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

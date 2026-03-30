@@ -3,7 +3,9 @@ from pydantic import BaseModel, field_validator
 from typing import Literal, Optional
 from sqlalchemy.orm import Session
 from backend.database import get_db
-from backend.models import Widget
+from backend.models import Widget, WidgetCache
+from backend.scheduler import schedule_widget, unschedule_widget
+import json
 
 router = APIRouter(prefix="/api/widgets", tags=["widgets"])
 
@@ -56,6 +58,7 @@ def create_widget(body: WidgetIn, db: Session = Depends(get_db)):
     db.add(widget)
     db.commit()
     db.refresh(widget)
+    schedule_widget(widget)
     return widget
 
 
@@ -68,6 +71,7 @@ def update_widget(widget_id: int, body: WidgetIn, db: Session = Depends(get_db))
         setattr(widget, key, value)
     db.commit()
     db.refresh(widget)
+    schedule_widget(widget)
     return widget
 
 
@@ -76,5 +80,23 @@ def delete_widget(widget_id: int, db: Session = Depends(get_db)):
     widget = db.get(Widget, widget_id)
     if not widget:
         raise HTTPException(status_code=404, detail="Widget not found")
+    unschedule_widget(widget_id)
     db.delete(widget)
     db.commit()
+
+
+@router.get("/{widget_id}/data")
+def get_widget_data(widget_id: int, db: Session = Depends(get_db)):
+    """Return the latest cached poll result for a widget."""
+    widget = db.get(Widget, widget_id)
+    if not widget:
+        raise HTTPException(status_code=404, detail="Widget not found")
+    cache = db.get(WidgetCache, widget_id)
+    if not cache:
+        return {"status": "pending", "data": None, "error": None, "last_updated": None}
+    return {
+        "status": "error" if cache.error else "ok",
+        "data": json.loads(cache.data) if cache.data else None,
+        "error": cache.error,
+        "last_updated": cache.last_updated.isoformat() if cache.last_updated else None,
+    }
