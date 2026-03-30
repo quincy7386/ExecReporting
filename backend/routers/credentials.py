@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Credentials
 from backend.crypto import encrypt, decrypt
+from backend.cbc_client import test_connection
 
 router = APIRouter(prefix="/api/credentials", tags=["credentials"])
 
@@ -75,3 +76,11 @@ def delete_credentials(db: Session = Depends(get_db)):
     if creds:
         db.delete(creds)
         db.commit()
+
+
+@router.post("/test")
+async def test_credentials(db: Session = Depends(get_db)):
+    creds = _get_creds(db)
+    if not creds:
+        raise HTTPException(status_code=404, detail="No credentials saved yet.")
+    return await test_connection(creds)
