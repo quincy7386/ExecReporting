@@ -43,7 +43,7 @@ async def _search_alerts(
     creds: Credentials,
     query: str,
     rows: int,
-    start: int = 0,
+    start: int = 1,
 ) -> dict[str, Any]:
     url = _alerts_url(creds)
     payload = {
@@ -84,7 +84,7 @@ async def fetch_chart(
     """
     batch = 100
     results: list[dict] = []
-    start = 0
+    start = 1
 
     while len(results) < max_fetch:
         rows_to_fetch = min(batch, max_fetch - len(results))
@@ -95,7 +95,7 @@ async def fetch_chart(
         results.extend(batch_results)
         num_available = data.get("num_available", 0)
         start += rows_to_fetch
-        if start >= num_available:
+        if start > num_available:
             break
 
     counts: dict[str, int] = collections.Counter()
