@@ -74,7 +74,7 @@ def _job_id(widget_id: int) -> str:
 
 
 def schedule_widget(widget: Widget) -> None:
-    """Add or replace the polling job for a widget."""
+    """Add or replace the polling job for a widget, and fire an immediate poll."""
     jid = _job_id(widget.id)
     if scheduler.get_job(jid):
         scheduler.remove_job(jid)
@@ -88,6 +88,8 @@ def schedule_widget(widget: Widget) -> None:
             max_instances=1,
             replace_existing=True,
         )
+        # Trigger an immediate poll so changes are reflected right away
+        scheduler.add_job(_poll_widget, args=[widget.id])
 
 
 def unschedule_widget(widget_id: int) -> None:
