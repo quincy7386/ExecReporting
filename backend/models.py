@@ -28,6 +28,7 @@ class Widget(Base):
     width = Column(Integer, nullable=False, default=4)
     height = Column(Integer, nullable=False, default=3)
     time_range = Column(String, nullable=False, default="-2w")  # CBC relative range e.g. -1d, -1w, -2w, -30d
+    include_all_alerts = Column(Boolean, nullable=False, default=False)  # False = OPEN only
     enabled = Column(Boolean, nullable=False, default=True)
 
 

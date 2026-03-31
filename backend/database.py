@@ -24,6 +24,7 @@ def get_db():
 # Add a row here whenever a new column is added to an existing table.
 _MIGRATIONS = [
     ("widgets", "time_range", "VARCHAR NOT NULL DEFAULT '-2w'"),
+    ("widgets", "include_all_alerts", "BOOLEAN NOT NULL DEFAULT 0"),
 ]
 
 

@@ -32,6 +32,7 @@ const defaultForm: WidgetPayload = {
   chart_style: "bar",
   poll_interval: 60,
   time_range: "-2w",
+  include_all_alerts: false,
   row_limit: null,
   position_x: 0,
   position_y: 0,
@@ -103,6 +104,19 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
             <option value="-30d">Last 30 days</option>
           </select>
         </Field>
+
+        <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox"
+            id="include_all"
+            checked={form.include_all_alerts}
+            onChange={e => set("include_all_alerts", e.target.checked)}
+            style={{ width: 14, height: 14, cursor: "pointer" }}
+          />
+          <label htmlFor="include_all" style={{ fontSize: 13, color: "#cdd6f4", cursor: "pointer" }}>
+            Include all alerts <span style={{ color: "#585b70", fontSize: 11 }}>(unchecked = open alerts only)</span>
+          </label>
+        </div>
 
         <Field label="Poll Interval">
           <div style={{ display: "flex", gap: 8 }}>

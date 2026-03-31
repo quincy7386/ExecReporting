@@ -19,6 +19,7 @@ class WidgetIn(BaseModel):
     chart_style: ChartStyle
     poll_interval: int = 60
     time_range: str = "-2w"
+    include_all_alerts: bool = False
     row_limit: Optional[int] = None
     position_x: int = 0
     position_y: int = 0

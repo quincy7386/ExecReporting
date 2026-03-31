@@ -35,6 +35,7 @@ export interface Widget {
   chart_style: ChartStyle;
   poll_interval: number;
   time_range: string;
+  include_all_alerts: boolean;
   row_limit: number | null;
   position_x: number;
   position_y: number;
