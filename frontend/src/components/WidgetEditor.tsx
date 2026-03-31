@@ -1,6 +1,23 @@
 import { useState, useEffect } from "react";
 import type { Widget, WidgetPayload, ChartStyle } from "../api";
 
+const GROUP_BY_FIELDS = [
+  "attack_tactic","attack_technique","blocked_effective_reputation","blocked_name",
+  "childproc_effective_reputation","childproc_name","childproc_username",
+  "determination","determination_value","device_location","device_name",
+  "device_os","device_os_version","device_policy","device_target_value",
+  "device_username","ioc_field","ioc_hit","mdr_determination_value",
+  "mdr_workflow_status","ml_classification_final_verdict",
+  "ml_classification_global_prevalence","ml_classification_org_prevalence",
+  "netconn_protocol","netconn_remote_domain","netconn_remote_port",
+  "parent_effective_reputation","parent_name","parent_reputation","parent_username",
+  "policy_applied","process_effective_reputation","process_issuer","process_name",
+  "process_publisher","process_reputation","process_sha256","process_username",
+  "reason","reason_code","report_name","report_tags","rule_config_category",
+  "run_state","sensor_action","severity","tags","threat_name","ttps","type",
+  "vendor_name","watchlists_name","workflow_closure_reason","workflow_status",
+];
+
 interface Props {
   initial?: Widget;
   onSave: (payload: WidgetPayload) => void;
@@ -61,7 +78,9 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
         </Field>
 
         <Field label="Group By Field">
-          <input style={inputStyle} value={form.group_by} onChange={e => set("group_by", e.target.value)} required />
+          <select style={inputStyle} value={form.group_by} onChange={e => set("group_by", e.target.value)}>
+            {GROUP_BY_FIELDS.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
         </Field>
 
         <Field label="Chart Style">

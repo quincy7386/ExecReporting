@@ -85,9 +85,9 @@ function ListChart({ data }: { data: Record<string, unknown>[] }) {
 
 function PieViz({ data }: { data: { label: string; count: number }[] }) {
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <PieChart>
-        <Pie data={data} dataKey="count" nameKey="label" cx="50%" cy="50%" outerRadius={80} label={(props) => props.name}>
+    <ResponsiveContainer width="100%" height={220}>
+      <PieChart margin={{ top: 16, right: 32, bottom: 16, left: 32 }}>
+        <Pie data={data} dataKey="count" nameKey="label" cx="50%" cy="50%" outerRadius="60%" label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`} labelLine={true}>
           {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
         </Pie>
         <Tooltip formatter={(v) => [v, "count"]} />
