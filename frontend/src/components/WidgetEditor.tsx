@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Widget, WidgetPayload, ChartStyle } from "../api";
 
 interface Props {
@@ -22,8 +22,21 @@ const defaultForm: WidgetPayload = {
   enabled: true,
 };
 
+function secondsToUnit(seconds: number): { value: number; unit: "minutes" | "hours" | "days" } {
+  if (seconds % 86400 === 0) return { value: seconds / 86400, unit: "days" };
+  if (seconds % 3600 === 0) return { value: seconds / 3600, unit: "hours" };
+  return { value: Math.round(seconds / 60), unit: "minutes" };
+}
+
 export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
   const [form, setForm] = useState<WidgetPayload>(initial ? { ...initial } : defaultForm);
+  const [pollValue, setPollValue] = useState(() => secondsToUnit(form.poll_interval).value);
+  const [pollUnit, setPollUnit] = useState(() => secondsToUnit(form.poll_interval).unit);
+
+  useEffect(() => {
+    const multiplier = pollUnit === "days" ? 86400 : pollUnit === "hours" ? 3600 : 60;
+    setForm(f => ({ ...f, poll_interval: pollValue * multiplier }));
+  }, [pollValue, pollUnit]);
 
   const set = (field: keyof WidgetPayload, value: unknown) =>
     setForm(f => ({ ...f, [field]: value }));
@@ -71,8 +84,22 @@ export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
           </select>
         </Field>
 
-        <Field label="Poll Interval (seconds)">
-          <input style={inputStyle} type="number" min={10} value={form.poll_interval} onChange={e => set("poll_interval", parseInt(e.target.value))} required />
+        <Field label="Poll Interval">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              style={{ ...inputStyle, width: 80 }}
+              type="number"
+              min={1}
+              value={pollValue}
+              onChange={e => setPollValue(Math.max(1, parseInt(e.target.value) || 1))}
+              required
+            />
+            <select style={{ ...inputStyle, flex: 1 }} value={pollUnit} onChange={e => setPollUnit(e.target.value as "minutes" | "hours" | "days")}>
+              <option value="minutes">Minutes</option>
+              <option value="hours">Hours</option>
+              <option value="days">Days</option>
+            </select>
+          </div>
         </Field>
 
         {form.chart_style === "list" && (
