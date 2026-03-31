@@ -3,8 +3,8 @@ import GridLayout from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import { listWidgets, createWidget, updateWidget, deleteWidget } from "../api";
-import type { Widget, WidgetPayload } from "../api";
+import { listWidgets, createWidget, updateWidget, deleteWidget, getCredentials } from "../api";
+import type { Widget, WidgetPayload, Credentials } from "../api";
 import WidgetCard from "../components/WidgetCard";
 import WidgetEditor from "../components/WidgetEditor";
 
@@ -13,11 +13,13 @@ const ROW_HEIGHT = 80;
 
 export default function Dashboard() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [creds, setCreds] = useState<Credentials | null>(null);
   const [editing, setEditing] = useState<Widget | null | "new">(null);
   const [containerWidth, setContainerWidth] = useState(window.innerWidth - 32);
 
   useEffect(() => {
     listWidgets().then(setWidgets);
+    getCredentials().then(c => { if (c.configured) setCreds(c); });
     const onResize = () => setContainerWidth(window.innerWidth - 32);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -99,6 +101,7 @@ export default function Dashboard() {
           <div key={String(w.id)} style={{ height: "100%" }}>
             <WidgetCard
               widget={w}
+              creds={creds}
               onEdit={() => setEditing(w)}
               onDelete={() => handleDelete(w.id)}
             />

@@ -1,21 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Component } from "react";
+import type { ReactNode } from "react";
 import {
   PieChart, Pie, Cell,
   BarChart, Bar, XAxis, YAxis, Tooltip,
   LineChart, Line,
   ResponsiveContainer,
 } from "recharts";
-import { getWidgetData, getCredentials } from "../api";
+import { getWidgetData } from "../api";
 import type { Widget, WidgetData, Credentials } from "../api";
 
 const COLORS = ["#4f86c6", "#f4a261", "#2a9d8f", "#e76f51", "#a8dadc", "#457b9d", "#e9c46a", "#264653"];
 
-// Strip directory path, return just the filename (handles / and \)
-function basename(s: string): string {
-  return s.replace(/.*[/\\]/, "") || s;
+// Fields whose values are file paths — strip to basename for display
+const PATH_FIELDS = new Set([
+  "process_name", "parent_name", "childproc_name",
+  "blocked_name", "process_sha256",
+]);
+
+function maybeBasename(field: string, value: string): string {
+  if (!PATH_FIELDS.has(field)) return value;
+  return value.replace(/.*[/\\]/, "") || value;
 }
 
-// Build a CBC console deep-link for a group-by value
 function cbcUrl(creds: Credentials, groupBy: string, label: string): string {
   const host = creds.hostname.replace(/\/$/, "");
   const base = host.startsWith("http") ? host : `https://${host}`;
@@ -23,19 +29,40 @@ function cbcUrl(creds: Credentials, groupBy: string, label: string): string {
   return `${base}/alerts?s[c][query_string]=${q}&orgKey=${creds.org_key}`;
 }
 
+// ---------------------------------------------------------------------------
+// Error boundary — isolates render errors to a single widget
+// ---------------------------------------------------------------------------
+
+interface BoundaryState { error: string | null }
+
+class WidgetErrorBoundary extends Component<{ children: ReactNode }, BoundaryState> {
+  state: BoundaryState = { error: null };
+  static getDerivedStateFromError(e: Error) { return { error: e.message }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 12, color: "#f38ba8", fontSize: 12 }}>
+          Widget error: {this.state.error}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// WidgetCard
+// ---------------------------------------------------------------------------
+
 interface Props {
   widget: Widget;
+  creds: Credentials | null;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export default function WidgetCard({ widget, onEdit, onDelete }: Props) {
+export default function WidgetCard({ widget, creds, onEdit, onDelete }: Props) {
   const [result, setResult] = useState<WidgetData | null>(null);
-  const [creds, setCreds] = useState<Credentials | null>(null);
-
-  useEffect(() => {
-    getCredentials().then(c => { if (c.configured) setCreds(c); });
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,13 +72,14 @@ export default function WidgetCard({ widget, onEdit, onDelete }: Props) {
     return () => { cancelled = true; clearInterval(interval); };
   }, [widget.id, widget.poll_interval]);
 
-  // Normalise chart data: strip paths from labels
   const rawData = result?.data as { label: string; count: number }[] | null;
-  const data = rawData?.map(d => ({ ...d, label: basename(d.label) })) ?? null;
+  const data = rawData?.map(d => ({
+    ...d,
+    displayLabel: maybeBasename(widget.group_by, d.label),
+  })) ?? null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#1e1e2e", border: "1px solid #333", borderRadius: 8, overflow: "hidden" }}>
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#2a2a3e", flexShrink: 0 }}>
         <span className="drag-handle" style={{ fontWeight: 600, fontSize: 14, color: "#cdd6f4", cursor: "grab", flex: 1 }}>{widget.title}</span>
         <div style={{ display: "flex", gap: 8 }} onMouseDown={e => e.stopPropagation()}>
@@ -60,19 +88,20 @@ export default function WidgetCard({ widget, onEdit, onDelete }: Props) {
         </div>
       </div>
 
-      {/* Body */}
       <div style={{ flex: 1, padding: 8, overflow: "auto", minHeight: 0 }}>
-        {!result && <div style={mutedStyle}>Loading…</div>}
-        {result?.status === "pending" && <div style={mutedStyle}>Waiting for first poll…</div>}
-        {result?.status === "error" && <div style={{ color: "#f38ba8", fontSize: 12 }}>{result.error}</div>}
-        {result?.status === "ok" && data && (
-          <>
-            {widget.chart_style === "list" && <ListChart data={result.data as Record<string, unknown>[]} creds={creds} groupBy={widget.group_by} />}
-            {widget.chart_style === "pie" && <PieViz data={data} creds={creds} groupBy={widget.group_by} />}
-            {widget.chart_style === "bar" && <BarViz data={data} creds={creds} groupBy={widget.group_by} />}
-            {widget.chart_style === "line" && <LineViz data={data} creds={creds} groupBy={widget.group_by} />}
-          </>
-        )}
+        <WidgetErrorBoundary>
+          {!result && <div style={mutedStyle}>Loading…</div>}
+          {result?.status === "pending" && <div style={mutedStyle}>Waiting for first poll…</div>}
+          {result?.status === "error" && <div style={{ color: "#f38ba8", fontSize: 12 }}>{result.error}</div>}
+          {result?.status === "ok" && data && (
+            <>
+              {widget.chart_style === "list" && <ListChart data={result.data as Record<string, unknown>[]} creds={creds} groupBy={widget.group_by} />}
+              {widget.chart_style === "pie" && <PieViz data={data} creds={creds} groupBy={widget.group_by} />}
+              {widget.chart_style === "bar" && <BarViz data={data} creds={creds} groupBy={widget.group_by} />}
+              {widget.chart_style === "line" && <LineViz data={data} creds={creds} groupBy={widget.group_by} />}
+            </>
+          )}
+        </WidgetErrorBoundary>
       </div>
 
       {result?.last_updated && (
@@ -88,8 +117,10 @@ export default function WidgetCard({ widget, onEdit, onDelete }: Props) {
 // Chart components
 // ---------------------------------------------------------------------------
 
+type ChartRow = { label: string; displayLabel: string; count: number };
+
 interface ChartProps {
-  data: { label: string; count: number }[];
+  data: ChartRow[];
   creds: Credentials | null;
   groupBy: string;
 }
@@ -111,7 +142,7 @@ function ListChart({ data, creds, groupBy }: { data: Record<string, unknown>[]; 
               {keys.map(k => (
                 <td key={k} style={{ padding: "3px 6px" }}>
                   {k === groupBy && link
-                    ? <a href={link} target="_blank" rel="noreferrer" style={{ color: "#89b4fa" }}>{basename(String(row[k] ?? ""))}</a>
+                    ? <a href={link} target="_blank" rel="noreferrer" style={{ color: "#89b4fa" }}>{maybeBasename(groupBy, String(row[k] ?? ""))}</a>
                     : String(row[k] ?? "")}
                 </td>
               ))}
@@ -124,21 +155,21 @@ function ListChart({ data, creds, groupBy }: { data: Record<string, unknown>[]; 
 }
 
 function PieViz({ data, creds, groupBy }: ChartProps) {
-  const handleClick = (entry: { name?: string }) => {
-    if (!creds || !entry.name) return;
-    window.open(cbcUrl(creds, groupBy, entry.name), "_blank");
-  };
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
         <Pie
           data={data}
           dataKey="count"
-          nameKey="label"
+          nameKey="displayLabel"
           cx="50%"
           cy="50%"
           outerRadius="55%"
-          onClick={handleClick}
+          onClick={(entry: { name?: string; payload?: { label: string } }) => {
+            if (!creds) return;
+            const raw = entry.payload?.label ?? entry.name ?? "";
+            if (raw) window.open(cbcUrl(creds, groupBy, raw), "_blank");
+          }}
           style={{ cursor: creds ? "pointer" : "default" }}
           label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
           labelLine={true}
@@ -152,25 +183,18 @@ function PieViz({ data, creds, groupBy }: ChartProps) {
 }
 
 function BarViz({ data, creds, groupBy }: ChartProps) {
-  // Estimate bottom margin based on longest label
-  const maxLen = Math.max(...data.map(d => d.label.length));
+  const maxLen = Math.max(...data.map(d => d.displayLabel.length));
   const bottomMargin = Math.min(maxLen * 5, 120);
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 8, right: 8, bottom: bottomMargin, left: 8 }}>
-        <XAxis
-          dataKey="label"
-          tick={{ fill: "#cdd6f4", fontSize: 11 }}
-          angle={-40}
-          textAnchor="end"
-          interval={0}
-        />
+        <XAxis dataKey="displayLabel" tick={{ fill: "#cdd6f4", fontSize: 11 }} angle={-40} textAnchor="end" interval={0} />
         <YAxis tick={{ fill: "#cdd6f4", fontSize: 11 }} />
-        <Tooltip />
+        <Tooltip formatter={(v) => [v, "count"]} labelFormatter={(l) => l} />
         <Bar
           dataKey="count"
           onClick={(entry) => {
-            if (creds) window.open(cbcUrl(creds, groupBy, (entry.payload as { label: string }).label), "_blank");
+            if (creds) window.open(cbcUrl(creds, groupBy, (entry as unknown as { label: string }).label), "_blank");
           }}
           style={{ cursor: creds ? "pointer" : "default" }}
         >
@@ -194,7 +218,7 @@ function LineViz({ data, creds, groupBy }: ChartProps) {
         }}
         style={{ cursor: creds ? "pointer" : "default" }}
       >
-        <XAxis dataKey="label" tick={{ fill: "#cdd6f4", fontSize: 11 }} />
+        <XAxis dataKey="displayLabel" tick={{ fill: "#cdd6f4", fontSize: 11 }} />
         <YAxis tick={{ fill: "#cdd6f4", fontSize: 11 }} />
         <Tooltip />
         <Line type="monotone" dataKey="count" stroke="#4f86c6" dot={true} />
