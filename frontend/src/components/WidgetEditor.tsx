@@ -24,6 +24,11 @@ const DEVICE_GROUP_BY_FIELDS = [
   "target_priority",
 ];
 
+const OBSERVATION_GROUP_BY_FIELDS = [
+  "alert_id","device_name","device_os","parent_name","process_name",
+  "process_username","sensor_action","ttp",
+];
+
 interface Props {
   initial?: Widget;
   onSave: (payload: WidgetPayload) => void;
@@ -70,11 +75,17 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
 
   // When data source changes, reset group_by to a sensible default for that source
   const handleDataSourceChange = (src: DataSource) => {
-    const defaultGroupBy = src === "devices" ? "os" : "severity";
+    const defaultGroupBy =
+      src === "devices" ? "os" :
+      src === "observations" ? "process_name" :
+      "severity";
     setForm(f => ({ ...f, data_source: src, group_by: defaultGroupBy }));
   };
 
-  const groupByFields = form.data_source === "devices" ? DEVICE_GROUP_BY_FIELDS : ALERT_GROUP_BY_FIELDS;
+  const groupByFields =
+    form.data_source === "devices" ? DEVICE_GROUP_BY_FIELDS :
+    form.data_source === "observations" ? OBSERVATION_GROUP_BY_FIELDS :
+    ALERT_GROUP_BY_FIELDS;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

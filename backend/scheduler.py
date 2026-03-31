@@ -14,7 +14,11 @@ from sqlalchemy.orm import Session
 
 from backend.database import SessionLocal
 from backend.models import Credentials, Widget, WidgetCache
-from backend.cbc_client import fetch_list, fetch_chart, fetch_devices_list, fetch_devices_chart
+from backend.cbc_client import (
+    fetch_list, fetch_chart,
+    fetch_devices_list, fetch_devices_chart,
+    fetch_observations_list, fetch_observations_chart,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +50,12 @@ async def _poll_widget(widget_id: int) -> None:
                     result = await fetch_devices_list(creds, query, widget.row_limit or 25)
                 else:
                     result = await fetch_devices_chart(creds, query, widget.group_by)
+            elif widget.data_source == "observations":
+                query = widget.search_query
+                if widget.chart_style == "list":
+                    result = await fetch_observations_list(creds, query, widget.row_limit or 25, widget.time_range)
+                else:
+                    result = await fetch_observations_chart(creds, query, widget.group_by, widget.time_range)
             else:
                 query = widget.search_query
                 if not widget.include_all_alerts:
