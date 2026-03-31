@@ -5,6 +5,7 @@ interface Props {
   initial?: Widget;
   onSave: (payload: WidgetPayload) => void;
   onCancel: () => void;
+  error?: string | null;
 }
 
 const defaultForm: WidgetPayload = {
@@ -28,7 +29,7 @@ function secondsToUnit(seconds: number): { value: number; unit: "minutes" | "hou
   return { value: Math.round(seconds / 60), unit: "minutes" };
 }
 
-export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
+export default function WidgetEditor({ initial, onSave, onCancel, error }: Props) {
   const [form, setForm] = useState<WidgetPayload>(initial ? { ...initial } : defaultForm);
   const [pollValue, setPollValue] = useState(() => secondsToUnit(form.poll_interval).value);
   const [pollUnit, setPollUnit] = useState(() => secondsToUnit(form.poll_interval).unit);
@@ -108,7 +109,11 @@ export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
           </Field>
         )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
+        {error && (
+          <div style={{ color: "#f38ba8", fontSize: 12, marginTop: 12 }}>Error: {error}</div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
           <button type="button" onClick={onCancel} style={secondaryBtn}>Cancel</button>
           <button type="submit" style={primaryBtn}>Save</button>
         </div>

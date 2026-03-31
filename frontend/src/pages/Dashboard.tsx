@@ -48,15 +48,23 @@ export default function Dashboard() {
     }));
   }, [widgets]);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const handleSave = async (payload: WidgetPayload) => {
-    if (editing === "new") {
-      const created = await createWidget(payload);
-      setWidgets(prev => [...prev, created]);
-    } else if (editing) {
-      const updated = await updateWidget(editing.id, payload);
-      setWidgets(prev => prev.map(w => w.id === updated.id ? updated : w));
+    setSaveError(null);
+    try {
+      if (editing === "new") {
+        const created = await createWidget(payload);
+        setWidgets(prev => [...prev, created]);
+      } else if (editing) {
+        const updated = await updateWidget(editing.id, payload);
+        setWidgets(prev => prev.map(w => w.id === updated.id ? updated : w));
+      }
+      setEditing(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setSaveError(msg);
     }
-    setEditing(null);
   };
 
   const handleDelete = async (id: number) => {
@@ -102,7 +110,8 @@ export default function Dashboard() {
         <WidgetEditor
           initial={editing === "new" ? undefined : editing}
           onSave={handleSave}
-          onCancel={() => setEditing(null)}
+          onCancel={() => { setEditing(null); setSaveError(null); }}
+          error={saveError}
         />
       )}
     </div>
