@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/app.db")
@@ -20,6 +20,24 @@ def get_db():
         db.close()
 
 
+# Each entry: (table, column, column_def)
+# Add a row here whenever a new column is added to an existing table.
+_MIGRATIONS = [
+    ("widgets", "time_range", "VARCHAR NOT NULL DEFAULT '-2w'"),
+]
+
+
+def _run_migrations() -> None:
+    with engine.connect() as conn:
+        for table, column, col_def in _MIGRATIONS:
+            rows = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            existing = {row[1] for row in rows}
+            if column not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}"))
+                conn.commit()
+
+
 def init_db():
     from backend import models  # noqa: F401 — ensures models are registered
     Base.metadata.create_all(bind=engine)
+    _run_migrations()
