@@ -355,6 +355,64 @@ async def fetch_process_chart(
 
 
 # ---------------------------------------------------------------------------
+# Vulnerability Assessment (synchronous)
+# ---------------------------------------------------------------------------
+
+async def _search_vulnerabilities(
+    creds: Credentials,
+    query: str,
+    rows: int,
+    start: int = 0,
+) -> dict[str, Any]:
+    url = f"{_base_url(creds)}/vulnerability/assessment/api/v1/orgs/{creds.org_key}/devices/vulnerabilities/_search"
+    payload: dict[str, Any] = {
+        "start": start,
+        "rows": rows,
+        "sort": [{"field": "risk_meter_score", "order": "DESC"}],
+    }
+    if query.strip() and query.strip() != "*":
+        payload["query"] = query
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(url, headers=_auth_header(creds), json=payload)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def fetch_vulnerability_list(
+    creds: Credentials,
+    query: str,
+    row_limit: int,
+) -> list[dict[str, Any]]:
+    data = await _search_vulnerabilities(creds, query, rows=min(row_limit, 1000))
+    return data.get("results", [])[:row_limit]
+
+
+async def fetch_vulnerability_chart(
+    creds: Credentials,
+    query: str,
+    group_by: str,
+    max_fetch: int = 10_000,
+) -> list[dict[str, Any]]:
+    batch = 1000
+    results: list[dict] = []
+    start = 0
+
+    while len(results) < max_fetch:
+        rows_to_fetch = min(batch, max_fetch - len(results))
+        data = await _search_vulnerabilities(creds, query, rows=rows_to_fetch, start=start)
+        batch_results = data.get("results", [])
+        if not batch_results:
+            break
+        results.extend(batch_results)
+        num_found = data.get("num_found", 0)
+        start += rows_to_fetch
+        if start >= num_found:
+            break
+
+    return _group_results(results, group_by)
+
+
+# ---------------------------------------------------------------------------
 # Connection test
 # ---------------------------------------------------------------------------
 

@@ -34,6 +34,10 @@ const PROCESS_GROUP_BY_FIELDS = [
   "process_reputation","process_effective_reputation",
 ];
 
+const VULN_GROUP_BY_FIELDS = [
+  "cve_id","os_type","severity","risk_meter_score",
+];
+
 interface Props {
   initial?: Widget;
   onSave: (payload: WidgetPayload) => void;
@@ -84,6 +88,7 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
       src === "devices" ? "os" :
       src === "observations" ? "process_name" :
       src === "process_search" ? "process_name" :
+      src === "vulnerability_assessment" ? "severity" :
       "severity";
     setForm(f => ({ ...f, data_source: src, group_by: defaultGroupBy }));
   };
@@ -92,6 +97,7 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
     form.data_source === "devices" ? DEVICE_GROUP_BY_FIELDS :
     form.data_source === "observations" ? OBSERVATION_GROUP_BY_FIELDS :
     form.data_source === "process_search" ? PROCESS_GROUP_BY_FIELDS :
+    form.data_source === "vulnerability_assessment" ? VULN_GROUP_BY_FIELDS :
     ALERT_GROUP_BY_FIELDS;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,6 +120,7 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
             <option value="devices">Devices</option>
             <option value="observations">Observations (Endpoint Standard)</option>
             <option value="process_search">Process Search (Enterprise EDR)</option>
+            <option value="vulnerability_assessment">Vulnerability Assessment</option>
           </select>
         </Field>
 
@@ -136,8 +143,8 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
           </select>
         </Field>
 
-        {/* Alerts / Observations / Process Search — all support time range */}
-        {form.data_source !== "devices" && <>
+        {/* Alerts / Observations / Process Search support time range; Devices and Vuln Assessment do not */}
+        {(form.data_source === "alerts" || form.data_source === "observations" || form.data_source === "process_search") && <>
           <Field label="Time Range">
             <select style={inputStyle} value={form.time_range} onChange={e => set("time_range", e.target.value)}>
               <option value="-1h">Last 1 hour</option>

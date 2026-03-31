@@ -26,7 +26,7 @@ export const testCredentials = () => api.post<{ ok: boolean; error?: string; num
 // --- Widgets ---
 
 export type ChartStyle = "pie" | "bar" | "line" | "list";
-export type DataSource = "alerts" | "devices" | "observations" | "process_search";
+export type DataSource = "alerts" | "devices" | "observations" | "process_search" | "vulnerability_assessment";
 
 export interface Widget {
   id: number;

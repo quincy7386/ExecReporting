@@ -19,6 +19,7 @@ from backend.cbc_client import (
     fetch_devices_list, fetch_devices_chart,
     fetch_observations_list, fetch_observations_chart,
     fetch_process_list, fetch_process_chart,
+    fetch_vulnerability_list, fetch_vulnerability_chart,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,12 @@ async def _poll_widget(widget_id: int) -> None:
                     result = await fetch_process_list(creds, query, widget.row_limit or 25, widget.time_range)
                 else:
                     result = await fetch_process_chart(creds, query, widget.group_by, widget.time_range)
+            elif widget.data_source == "vulnerability_assessment":
+                query = widget.search_query
+                if widget.chart_style == "list":
+                    result = await fetch_vulnerability_list(creds, query, widget.row_limit or 25)
+                else:
+                    result = await fetch_vulnerability_chart(creds, query, widget.group_by)
             else:
                 query = widget.search_query
                 if not widget.include_all_alerts:

@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/widgets", tags=["widgets"])
 ChartStyle = Literal["pie", "bar", "line", "list"]
 
 
-DataSource = Literal["alerts", "devices", "observations", "process_search"]
+DataSource = Literal["alerts", "devices", "observations", "process_search", "vulnerability_assessment"]
 
 class WidgetIn(BaseModel):
     title: str
