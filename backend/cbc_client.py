@@ -44,12 +44,14 @@ async def _search_alerts(
     query: str,
     rows: int,
     start: int = 1,
+    time_range: str = "-2w",
 ) -> dict[str, Any]:
     url = _alerts_url(creds)
     payload = {
         "query": query,
         "start": start,
         "rows": rows,
+        "time_range": {"range": time_range},
         "sort": [{"field": "backend_timestamp", "order": "DESC"}],
     }
     async with httpx.AsyncClient(timeout=30) as client:
@@ -66,9 +68,10 @@ async def fetch_list(
     creds: Credentials,
     query: str,
     row_limit: int,
+    time_range: str = "-2w",
 ) -> list[dict[str, Any]]:
     """Return up to row_limit alert records as raw dicts."""
-    data = await _search_alerts(creds, query, rows=min(row_limit, 100))
+    data = await _search_alerts(creds, query, rows=min(row_limit, 100), time_range=time_range)
     return data.get("results", [])[:row_limit]
 
 
@@ -76,6 +79,7 @@ async def fetch_chart(
     creds: Credentials,
     query: str,
     group_by: str,
+    time_range: str = "-2w",
     max_fetch: int = 10_000,
 ) -> list[dict[str, Any]]:
     """
@@ -88,7 +92,7 @@ async def fetch_chart(
 
     while len(results) < max_fetch:
         rows_to_fetch = min(batch, max_fetch - len(results))
-        data = await _search_alerts(creds, query, rows=rows_to_fetch, start=start)
+        data = await _search_alerts(creds, query, rows=rows_to_fetch, start=start, time_range=time_range)
         batch_results = data.get("results", [])
         if not batch_results:
             break

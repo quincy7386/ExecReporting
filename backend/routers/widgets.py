@@ -18,6 +18,7 @@ class WidgetIn(BaseModel):
     group_by: str
     chart_style: ChartStyle
     poll_interval: int = 60
+    time_range: str = "-2w"
     row_limit: Optional[int] = None
     position_x: int = 0
     position_y: int = 0

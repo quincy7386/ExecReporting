@@ -31,10 +31,10 @@ export default function WidgetCard({ widget, onEdit, onDelete }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#1e1e2e", border: "1px solid #333", borderRadius: 8, overflow: "hidden" }}>
-      {/* Header */}
+      {/* Header — title is the drag handle, buttons are excluded */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#2a2a3e", flexShrink: 0 }}>
-        <span style={{ fontWeight: 600, fontSize: 14, color: "#cdd6f4" }}>{widget.title}</span>
-        <div style={{ display: "flex", gap: 8 }}>
+        <span className="drag-handle" style={{ fontWeight: 600, fontSize: 14, color: "#cdd6f4", cursor: "grab", flex: 1 }}>{widget.title}</span>
+        <div style={{ display: "flex", gap: 8 }} onMouseDown={e => e.stopPropagation()}>
           <button onClick={onEdit} style={btnStyle}>Edit</button>
           <button onClick={onDelete} style={{ ...btnStyle, color: "#f38ba8" }}>Delete</button>
         </div>

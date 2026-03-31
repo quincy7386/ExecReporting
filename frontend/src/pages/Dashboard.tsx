@@ -88,14 +88,12 @@ export default function Dashboard() {
         draggableHandle=".drag-handle"
       >
         {widgets.map(w => (
-          <div key={String(w.id)}>
-            <div className="drag-handle" style={{ cursor: "grab", height: "100%" }}>
-              <WidgetCard
-                widget={w}
-                onEdit={() => setEditing(w)}
-                onDelete={() => handleDelete(w.id)}
-              />
-            </div>
+          <div key={String(w.id)} style={{ height: "100%" }}>
+            <WidgetCard
+              widget={w}
+              onEdit={() => setEditing(w)}
+              onDelete={() => handleDelete(w.id)}
+            />
           </div>
         ))}
       </GridLayout>

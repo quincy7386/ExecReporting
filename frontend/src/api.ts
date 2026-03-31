@@ -34,6 +34,7 @@ export interface Widget {
   group_by: string;
   chart_style: ChartStyle;
   poll_interval: number;
+  time_range: string;
   row_limit: number | null;
   position_x: number;
   position_y: number;

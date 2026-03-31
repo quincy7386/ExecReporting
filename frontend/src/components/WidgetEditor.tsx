@@ -13,6 +13,7 @@ const defaultForm: WidgetPayload = {
   group_by: "severity",
   chart_style: "bar",
   poll_interval: 60,
+  time_range: "-2w",
   row_limit: null,
   position_x: 0,
   position_y: 0,
@@ -55,6 +56,18 @@ export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
             <option value="pie">Pie</option>
             <option value="line">Line</option>
             <option value="list">List</option>
+          </select>
+        </Field>
+
+        <Field label="Time Range">
+          <select style={inputStyle} value={form.time_range} onChange={e => set("time_range", e.target.value)}>
+            <option value="-1h">Last 1 hour</option>
+            <option value="-4h">Last 4 hours</option>
+            <option value="-1d">Last 24 hours</option>
+            <option value="-3d">Last 3 days</option>
+            <option value="-1w">Last 7 days</option>
+            <option value="-2w">Last 14 days</option>
+            <option value="-30d">Last 30 days</option>
           </select>
         </Field>
 

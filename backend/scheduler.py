@@ -39,9 +39,9 @@ async def _poll_widget(widget_id: int) -> None:
 
         try:
             if widget.chart_style == "list":
-                result = await fetch_list(creds, widget.search_query, widget.row_limit or 25)
+                result = await fetch_list(creds, widget.search_query, widget.row_limit or 25, widget.time_range)
             else:
-                result = await fetch_chart(creds, widget.search_query, widget.group_by)
+                result = await fetch_chart(creds, widget.search_query, widget.group_by, widget.time_range)
 
             _write_cache(db, widget_id, data=json.dumps(result), error=None)
             logger.info("Polled widget %d OK", widget_id)
