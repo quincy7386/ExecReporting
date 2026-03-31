@@ -29,6 +29,11 @@ const OBSERVATION_GROUP_BY_FIELDS = [
   "process_username","sensor_action","ttp",
 ];
 
+const PROCESS_GROUP_BY_FIELDS = [
+  "device_name","device_os","parent_name","process_name","process_username",
+  "process_reputation","process_effective_reputation",
+];
+
 interface Props {
   initial?: Widget;
   onSave: (payload: WidgetPayload) => void;
@@ -78,6 +83,7 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
     const defaultGroupBy =
       src === "devices" ? "os" :
       src === "observations" ? "process_name" :
+      src === "process_search" ? "process_name" :
       "severity";
     setForm(f => ({ ...f, data_source: src, group_by: defaultGroupBy }));
   };
@@ -85,6 +91,7 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
   const groupByFields =
     form.data_source === "devices" ? DEVICE_GROUP_BY_FIELDS :
     form.data_source === "observations" ? OBSERVATION_GROUP_BY_FIELDS :
+    form.data_source === "process_search" ? PROCESS_GROUP_BY_FIELDS :
     ALERT_GROUP_BY_FIELDS;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -105,6 +112,8 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
           <select style={inputStyle} value={form.data_source} onChange={e => handleDataSourceChange(e.target.value as DataSource)}>
             <option value="alerts">Alerts</option>
             <option value="devices">Devices</option>
+            <option value="observations">Observations (Endpoint Standard)</option>
+            <option value="process_search">Process Search (Enterprise EDR)</option>
           </select>
         </Field>
 
@@ -127,8 +136,8 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
           </select>
         </Field>
 
-        {/* Alerts-specific fields */}
-        {form.data_source === "alerts" && <>
+        {/* Alerts / Observations / Process Search — all support time range */}
+        {form.data_source !== "devices" && <>
           <Field label="Time Range">
             <select style={inputStyle} value={form.time_range} onChange={e => set("time_range", e.target.value)}>
               <option value="-1h">Last 1 hour</option>
@@ -140,9 +149,11 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
               <option value="-30d">Last 30 days</option>
             </select>
           </Field>
-          <Checkbox id="include_all" checked={form.include_all_alerts} onChange={v => set("include_all_alerts", v)}>
-            Include all alerts <span style={{ color: "#585b70", fontSize: 11 }}>(unchecked = open only)</span>
-          </Checkbox>
+          {form.data_source === "alerts" && (
+            <Checkbox id="include_all" checked={form.include_all_alerts} onChange={v => set("include_all_alerts", v)}>
+              Include all alerts <span style={{ color: "#585b70", fontSize: 11 }}>(unchecked = open only)</span>
+            </Checkbox>
+          )}
         </>}
 
         {/* Devices-specific fields */}

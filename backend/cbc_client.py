@@ -264,6 +264,97 @@ async def fetch_observations_chart(
 
 
 # ---------------------------------------------------------------------------
+# Process Search (Enterprise EDR — async job pattern)
+# ---------------------------------------------------------------------------
+
+async def _submit_process_job(
+    creds: Credentials,
+    query: str,
+    time_range: str = "-2w",
+) -> str:
+    url = f"{_base_url(creds)}/api/investigate/v2/orgs/{creds.org_key}/processes/search_jobs"
+    payload = {
+        "query": query,
+        "time_range": {"range": time_range},
+        "fields": ["*"],
+        "rows": 0,
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(url, headers=_auth_header(creds), json=payload)
+        resp.raise_for_status()
+        return resp.json()["job_id"]
+
+
+async def _fetch_process_results(
+    creds: Credentials,
+    job_id: str,
+    start: int = 0,
+    rows: int = 100,
+) -> dict[str, Any]:
+    url = f"{_base_url(creds)}/api/investigate/v2/orgs/{creds.org_key}/processes/search_jobs/{job_id}/results"
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(url, headers=_auth_header(creds), params={"start": start, "rows": rows})
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _wait_for_process_job(
+    creds: Credentials,
+    job_id: str,
+    max_wait_seconds: int = 25,
+) -> None:
+    import asyncio
+    waited = 0
+    while waited < max_wait_seconds:
+        data = await _fetch_process_results(creds, job_id, start=0, rows=0)
+        if data.get("contacted") == data.get("completed"):
+            return
+        await asyncio.sleep(2)
+        waited += 2
+
+
+async def fetch_process_list(
+    creds: Credentials,
+    query: str,
+    row_limit: int,
+    time_range: str = "-2w",
+) -> list[dict[str, Any]]:
+    job_id = await _submit_process_job(creds, query, time_range)
+    await _wait_for_process_job(creds, job_id)
+    data = await _fetch_process_results(creds, job_id, start=0, rows=min(row_limit, 100))
+    return data.get("results", [])[:row_limit]
+
+
+async def fetch_process_chart(
+    creds: Credentials,
+    query: str,
+    group_by: str,
+    time_range: str = "-2w",
+    max_fetch: int = 10_000,
+) -> list[dict[str, Any]]:
+    job_id = await _submit_process_job(creds, query, time_range)
+    await _wait_for_process_job(creds, job_id)
+
+    batch = 100
+    results: list[dict] = []
+    start = 0
+
+    while len(results) < max_fetch:
+        rows_to_fetch = min(batch, max_fetch - len(results))
+        data = await _fetch_process_results(creds, job_id, start=start, rows=rows_to_fetch)
+        batch_results = data.get("results", [])
+        if not batch_results:
+            break
+        results.extend(batch_results)
+        num_available = data.get("num_available", 0)
+        start += rows_to_fetch
+        if start >= num_available:
+            break
+
+    return _group_results(results, group_by)
+
+
+# ---------------------------------------------------------------------------
 # Connection test
 # ---------------------------------------------------------------------------
 

@@ -27,7 +27,7 @@ class Widget(Base):
     position_y = Column(Integer, nullable=False, default=0)
     width = Column(Integer, nullable=False, default=4)
     height = Column(Integer, nullable=False, default=3)
-    data_source = Column(String, nullable=False, default="alerts")  # alerts | devices | observations
+    data_source = Column(String, nullable=False, default="alerts")  # alerts | devices | observations | process_search
     time_range = Column(String, nullable=False, default="-2w")      # alerts only
     include_all_alerts = Column(Boolean, nullable=False, default=False)  # alerts only; False = OPEN only
     active_devices_only = Column(Boolean, nullable=False, default=True)  # devices only; True = ACTIVE only
