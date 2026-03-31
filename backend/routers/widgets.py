@@ -12,14 +12,18 @@ router = APIRouter(prefix="/api/widgets", tags=["widgets"])
 ChartStyle = Literal["pie", "bar", "line", "list"]
 
 
+DataSource = Literal["alerts", "devices"]
+
 class WidgetIn(BaseModel):
     title: str
+    data_source: DataSource = "alerts"
     search_query: str
     group_by: str
     chart_style: ChartStyle
     poll_interval: int = 60
     time_range: str = "-2w"
     include_all_alerts: bool = False
+    active_devices_only: bool = True
     row_limit: Optional[int] = None
     position_x: int = 0
     position_y: int = 0

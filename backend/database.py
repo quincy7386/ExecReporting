@@ -25,6 +25,8 @@ def get_db():
 _MIGRATIONS = [
     ("widgets", "time_range", "VARCHAR NOT NULL DEFAULT '-2w'"),
     ("widgets", "include_all_alerts", "BOOLEAN NOT NULL DEFAULT 0"),
+    ("widgets", "data_source", "VARCHAR NOT NULL DEFAULT 'alerts'"),
+    ("widgets", "active_devices_only", "BOOLEAN NOT NULL DEFAULT 1"),
 ]
 
 

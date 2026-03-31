@@ -26,16 +26,19 @@ export const testCredentials = () => api.post<{ ok: boolean; error?: string; num
 // --- Widgets ---
 
 export type ChartStyle = "pie" | "bar" | "line" | "list";
+export type DataSource = "alerts" | "devices";
 
 export interface Widget {
   id: number;
   title: string;
+  data_source: DataSource;
   search_query: string;
   group_by: string;
   chart_style: ChartStyle;
   poll_interval: number;
   time_range: string;
   include_all_alerts: boolean;
+  active_devices_only: boolean;
   row_limit: number | null;
   position_x: number;
   position_y: number;

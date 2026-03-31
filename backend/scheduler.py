@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import SessionLocal
 from backend.models import Credentials, Widget, WidgetCache
-from backend.cbc_client import fetch_list, fetch_chart
+from backend.cbc_client import fetch_list, fetch_chart, fetch_devices_list, fetch_devices_chart
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +38,22 @@ async def _poll_widget(widget_id: int) -> None:
             return
 
         try:
-            query = widget.search_query
-            if not widget.include_all_alerts:
-                query = f"({query}) AND workflow_status:OPEN"
-            if widget.chart_style == "list":
-                result = await fetch_list(creds, query, widget.row_limit or 25, widget.time_range)
+            if widget.data_source == "devices":
+                query = widget.search_query
+                if widget.active_devices_only:
+                    query = "status:ACTIVE" if query.strip() in ("", "*") else f"({query}) AND status:ACTIVE"
+                if widget.chart_style == "list":
+                    result = await fetch_devices_list(creds, query, widget.row_limit or 25)
+                else:
+                    result = await fetch_devices_chart(creds, query, widget.group_by)
             else:
-                result = await fetch_chart(creds, query, widget.group_by, widget.time_range)
+                query = widget.search_query
+                if not widget.include_all_alerts:
+                    query = f"({query}) AND workflow_status:OPEN"
+                if widget.chart_style == "list":
+                    result = await fetch_list(creds, query, widget.row_limit or 25, widget.time_range)
+                else:
+                    result = await fetch_chart(creds, query, widget.group_by, widget.time_range)
 
             _write_cache(db, widget_id, data=json.dumps(result), error=None)
             logger.info("Polled widget %d OK", widget_id)

@@ -22,11 +22,12 @@ function maybeBasename(field: string, value: string): string {
   return value.replace(/.*[/\\]/, "") || value;
 }
 
-function cbcUrl(creds: Credentials, groupBy: string, label: string): string {
+function cbcUrl(creds: Credentials, groupBy: string, label: string, dataSource: string): string {
   const host = creds.hostname.replace(/\/$/, "");
   const base = host.startsWith("http") ? host : `https://${host}`;
   const q = encodeURIComponent(`${groupBy}:"${label}"`);
-  return `${base}/alerts?s[c][query_string]=${q}&orgKey=${creds.org_key}`;
+  const page = dataSource === "devices" ? "endpoints" : "alerts";
+  return `${base}/${page}?s[c][query_string]=${q}&orgKey=${creds.org_key}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,10 +96,10 @@ export default function WidgetCard({ widget, creds, onEdit, onDelete }: Props) {
           {result?.status === "error" && <div style={{ color: "#f38ba8", fontSize: 12 }}>{result.error}</div>}
           {result?.status === "ok" && data && (
             <>
-              {widget.chart_style === "list" && <ListChart data={result.data as Record<string, unknown>[]} creds={creds} groupBy={widget.group_by} />}
-              {widget.chart_style === "pie" && <PieViz data={data} creds={creds} groupBy={widget.group_by} />}
-              {widget.chart_style === "bar" && <BarViz data={data} creds={creds} groupBy={widget.group_by} />}
-              {widget.chart_style === "line" && <LineViz data={data} creds={creds} groupBy={widget.group_by} />}
+              {widget.chart_style === "list" && <ListChart data={result.data as Record<string, unknown>[]} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} />}
+              {widget.chart_style === "pie" && <PieViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} />}
+              {widget.chart_style === "bar" && <BarViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} />}
+              {widget.chart_style === "line" && <LineViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} />}
             </>
           )}
         </WidgetErrorBoundary>
@@ -123,9 +124,10 @@ interface ChartProps {
   data: ChartRow[];
   creds: Credentials | null;
   groupBy: string;
+  dataSource: string;
 }
 
-function ListChart({ data, creds, groupBy }: { data: Record<string, unknown>[]; creds: Credentials | null; groupBy: string }) {
+function ListChart({ data, creds, groupBy, dataSource }: { data: Record<string, unknown>[]; creds: Credentials | null; groupBy: string; dataSource: string }) {
   if (!data.length) return <div style={mutedStyle}>No results</div>;
   const keys = Object.keys(data[0]);
   return (
@@ -136,7 +138,7 @@ function ListChart({ data, creds, groupBy }: { data: Record<string, unknown>[]; 
       <tbody>
         {data.map((row, i) => {
           const rawVal = String(row[groupBy] ?? "");
-          const link = creds ? cbcUrl(creds, groupBy, rawVal) : null;
+          const link = creds ? cbcUrl(creds, groupBy, rawVal, dataSource) : null;
           return (
             <tr key={i} style={{ background: i % 2 ? "#2a2a3e" : "transparent" }}>
               {keys.map(k => (
@@ -154,7 +156,7 @@ function ListChart({ data, creds, groupBy }: { data: Record<string, unknown>[]; 
   );
 }
 
-function PieViz({ data, creds, groupBy }: ChartProps) {
+function PieViz({ data, creds, groupBy, dataSource }: ChartProps) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
@@ -168,7 +170,7 @@ function PieViz({ data, creds, groupBy }: ChartProps) {
           onClick={(entry: { name?: string; payload?: { label: string } }) => {
             if (!creds) return;
             const raw = entry.payload?.label ?? entry.name ?? "";
-            if (raw) window.open(cbcUrl(creds, groupBy, raw), "_blank");
+            if (raw) window.open(cbcUrl(creds, groupBy, raw, dataSource), "_blank");
           }}
           style={{ cursor: creds ? "pointer" : "default" }}
           label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
@@ -182,7 +184,7 @@ function PieViz({ data, creds, groupBy }: ChartProps) {
   );
 }
 
-function BarViz({ data, creds, groupBy }: ChartProps) {
+function BarViz({ data, creds, groupBy, dataSource }: ChartProps) {
   const maxLen = Math.max(...data.map(d => d.displayLabel.length));
   const bottomMargin = Math.min(maxLen * 5, 120);
   return (
@@ -194,7 +196,7 @@ function BarViz({ data, creds, groupBy }: ChartProps) {
         <Bar
           dataKey="count"
           onClick={(entry) => {
-            if (creds) window.open(cbcUrl(creds, groupBy, (entry as unknown as { label: string }).label), "_blank");
+            if (creds) window.open(cbcUrl(creds, groupBy, (entry as unknown as { label: string }).label, dataSource), "_blank");
           }}
           style={{ cursor: creds ? "pointer" : "default" }}
         >
@@ -205,7 +207,7 @@ function BarViz({ data, creds, groupBy }: ChartProps) {
   );
 }
 
-function LineViz({ data, creds, groupBy }: ChartProps) {
+function LineViz({ data, creds, groupBy, dataSource }: ChartProps) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
@@ -214,7 +216,7 @@ function LineViz({ data, creds, groupBy }: ChartProps) {
         onClick={(point) => {
           if (!creds) return;
           const payload = (point as { activePayload?: { payload: { label: string } }[] })?.activePayload?.[0]?.payload;
-          if (payload) window.open(cbcUrl(creds, groupBy, payload.label), "_blank");
+          if (payload) window.open(cbcUrl(creds, groupBy, payload.label, dataSource), "_blank");
         }}
         style={{ cursor: creds ? "pointer" : "default" }}
       >
