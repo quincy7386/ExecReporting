@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 from typing import Literal, Optional
 from sqlalchemy.orm import Session
@@ -12,9 +12,10 @@ router = APIRouter(prefix="/api/widgets", tags=["widgets"])
 ChartStyle = Literal["pie", "bar", "line", "list"]
 
 
-DataSource = Literal["alerts", "devices", "observations", "process_search", "vulnerability_assessment"]
+DataSource = Literal["alerts", "devices", "observations", "process_search", "vulnerability_assessment", "audit_logs"]
 
 class WidgetIn(BaseModel):
+    dashboard_id: Optional[int] = None
     title: str
     data_source: DataSource = "alerts"
     search_query: str
@@ -24,6 +25,11 @@ class WidgetIn(BaseModel):
     time_range: str = "-2w"
     include_all_alerts: bool = False
     active_devices_only: bool = True
+    sort_order: str = "desc"
+    list_columns: Optional[list[str]] = None
+    agg_field: Optional[str] = None
+    agg_func: str = "count"
+    line_split_by: Optional[str] = None
     row_limit: Optional[int] = None
     position_x: int = 0
     position_y: int = 0
@@ -46,8 +52,11 @@ class WidgetOut(WidgetIn):
 
 
 @router.get("", response_model=list[WidgetOut])
-def list_widgets(db: Session = Depends(get_db)):
-    return db.query(Widget).all()
+def list_widgets(dashboard_id: Optional[int] = Query(None), db: Session = Depends(get_db)):
+    q = db.query(Widget)
+    if dashboard_id is not None:
+        q = q.filter(Widget.dashboard_id == dashboard_id)
+    return q.all()
 
 
 @router.get("/{widget_id}", response_model=WidgetOut)
@@ -104,5 +113,5 @@ def get_widget_data(widget_id: int, db: Session = Depends(get_db)):
         "status": "error" if cache.error else "ok",
         "data": json.loads(cache.data) if cache.data else None,
         "error": cache.error,
-        "last_updated": cache.last_updated.isoformat() if cache.last_updated else None,
+        "last_updated": (cache.last_updated.isoformat() + ("" if cache.last_updated.tzinfo else "Z")) if cache.last_updated else None,
     }

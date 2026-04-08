@@ -7,7 +7,7 @@ The scheduler is started/stopped via the FastAPI lifespan.
 """
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import Session
@@ -15,11 +15,13 @@ from sqlalchemy.orm import Session
 from backend.database import SessionLocal
 from backend.models import Credentials, Widget, WidgetCache
 from backend.cbc_client import (
-    fetch_list, fetch_chart,
-    fetch_devices_list, fetch_devices_chart,
-    fetch_observations_list, fetch_observations_chart,
-    fetch_process_list, fetch_process_chart,
-    fetch_vulnerability_list, fetch_vulnerability_chart,
+    fetch_chart,
+    fetch_devices_chart,
+    fetch_observations_chart,
+    fetch_process_chart,
+    fetch_vulnerability_chart,
+    fetch_audit_log_chart,
+    fetch_timeseries,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,40 +46,37 @@ async def _poll_widget(widget_id: int) -> None:
             return
 
         try:
-            if widget.data_source == "devices":
+            row_limit = widget.row_limit or 25
+            agg_kwargs = {"agg_field": widget.agg_field, "agg_func": widget.agg_func or "count"}
+
+            if widget.chart_style == "line":
+                # Line chart always shows events over time regardless of group_by
                 query = widget.search_query
-                if widget.active_devices_only:
-                    query = "status:ACTIVE" if query.strip() in ("", "*") else f"({query}) AND status:ACTIVE"
-                if widget.chart_style == "list":
-                    result = await fetch_devices_list(creds, query, widget.row_limit or 25)
-                else:
-                    result = await fetch_devices_chart(creds, query, widget.group_by)
+                if widget.data_source == "alerts" and not widget.include_all_alerts:
+                    query = f"({query}) AND workflow_status:OPEN"
+                result = await fetch_timeseries(
+                    creds, widget.data_source, query, widget.time_range,
+                    active_only=widget.active_devices_only,
+                    split_by=widget.line_split_by or None,
+                )
+            elif widget.data_source == "devices":
+                result = await fetch_devices_chart(creds, widget.search_query, widget.group_by, sort_order=widget.sort_order, active_only=widget.active_devices_only, **agg_kwargs)
             elif widget.data_source == "observations":
-                query = widget.search_query
-                if widget.chart_style == "list":
-                    result = await fetch_observations_list(creds, query, widget.row_limit or 25, widget.time_range)
-                else:
-                    result = await fetch_observations_chart(creds, query, widget.group_by, widget.time_range)
+                result = await fetch_observations_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, **agg_kwargs)
             elif widget.data_source == "process_search":
-                query = widget.search_query
-                if widget.chart_style == "list":
-                    result = await fetch_process_list(creds, query, widget.row_limit or 25, widget.time_range)
-                else:
-                    result = await fetch_process_chart(creds, query, widget.group_by, widget.time_range)
+                result = await fetch_process_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, **agg_kwargs)
             elif widget.data_source == "vulnerability_assessment":
-                query = widget.search_query
-                if widget.chart_style == "list":
-                    result = await fetch_vulnerability_list(creds, query, widget.row_limit or 25)
-                else:
-                    result = await fetch_vulnerability_chart(creds, query, widget.group_by)
+                result = await fetch_vulnerability_chart(creds, widget.search_query, widget.group_by, sort_order=widget.sort_order, **agg_kwargs)
+            elif widget.data_source == "audit_logs":
+                result = await fetch_audit_log_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, **agg_kwargs)
             else:
                 query = widget.search_query
                 if not widget.include_all_alerts:
                     query = f"({query}) AND workflow_status:OPEN"
-                if widget.chart_style == "list":
-                    result = await fetch_list(creds, query, widget.row_limit or 25, widget.time_range)
-                else:
-                    result = await fetch_chart(creds, query, widget.group_by, widget.time_range)
+                result = await fetch_chart(creds, query, widget.group_by, widget.time_range, sort_order=widget.sort_order, **agg_kwargs)
+
+            if widget.chart_style == "list":
+                result = result[:row_limit]
 
             _write_cache(db, widget_id, data=json.dumps(result), error=None)
             logger.info("Polled widget %d OK", widget_id)
@@ -115,6 +114,9 @@ def schedule_widget(widget: Widget) -> None:
     if scheduler.get_job(jid):
         scheduler.remove_job(jid)
     if widget.enabled:
+        # First interval fire is deferred by poll_interval so it doesn't collide
+        # with the immediate one-off poll below.
+        first_run = datetime.now(timezone.utc) + timedelta(seconds=widget.poll_interval)
         scheduler.add_job(
             _poll_widget,
             "interval",
@@ -123,6 +125,8 @@ def schedule_widget(widget: Widget) -> None:
             args=[widget.id],
             max_instances=1,
             replace_existing=True,
+            misfire_grace_time=120,
+            next_run_time=first_run,
         )
         # Trigger an immediate poll so changes are reflected right away
         scheduler.add_job(_poll_widget, args=[widget.id])

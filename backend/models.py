@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, JSON
 from datetime import datetime, timezone
 from backend.database import Base
 
@@ -13,10 +13,19 @@ class Credentials(Base):
     api_secret_encrypted = Column(Text, nullable=False)  # Fernet-encrypted
 
 
+class Dashboard(Base):
+    __tablename__ = "dashboards"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False, default="Dashboard")
+    position = Column(Integer, nullable=False, default=0)
+
+
 class Widget(Base):
     __tablename__ = "widgets"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    dashboard_id = Column(Integer, ForeignKey("dashboards.id"), nullable=True)
     title = Column(String, nullable=False)
     search_query = Column(Text, nullable=False)     # CBC search syntax
     group_by = Column(String, nullable=False)
@@ -28,9 +37,14 @@ class Widget(Base):
     width = Column(Integer, nullable=False, default=4)
     height = Column(Integer, nullable=False, default=3)
     data_source = Column(String, nullable=False, default="alerts")  # alerts | devices | observations | process_search | vulnerability_assessment
-    time_range = Column(String, nullable=False, default="-2w")      # alerts only
+    time_range = Column(String, nullable=False, default="-2w")
     include_all_alerts = Column(Boolean, nullable=False, default=False)  # alerts only; False = OPEN only
     active_devices_only = Column(Boolean, nullable=False, default=True)  # devices only; True = ACTIVE only
+    sort_order = Column(String, nullable=False, default="desc")  # asc | desc
+    list_columns = Column(JSON, nullable=True)  # ordered list of column names to display; null/[] = show all
+    agg_field = Column(String, nullable=True)   # field to aggregate; null = record count
+    agg_func = Column(String, nullable=False, default="count")  # count | sum | avg | max | min
+    line_split_by = Column(String, nullable=True)  # line chart only: field to split into multiple series
     enabled = Column(Boolean, nullable=False, default=True)
 
 
