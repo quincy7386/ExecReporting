@@ -500,12 +500,12 @@ export default function WidgetCard({ widget, creds, dashboards, onEdit, onDelete
     return () => { cancelled = true; clearInterval(interval); };
   }, [widget.id, widget.poll_interval]);
 
-  const rawData = result?.data as { label: string; count: number }[] | null;
+  const rawData = result?.data as Array<{ label: string } & Record<string, unknown>> | null;
   const data = rawData?.map(d => ({
     ...d,
     displayLabel: widget.group_by === "attack_technique"
-      ? enrichTechnique(d.label)
-      : maybeBasename(widget.group_by, d.label),
+      ? enrichTechnique(String(d.label))
+      : maybeBasename(widget.group_by, String(d.label)),
   })) ?? null;
   const valueLabel = widget.agg_field && widget.agg_func !== "count"
     ? `${widget.agg_func}(${widget.agg_field})`
@@ -558,7 +558,7 @@ export default function WidgetCard({ widget, creds, dashboards, onEdit, onDelete
             <>
               {widget.chart_style === "list" && <ListChart data={result.data as Record<string, unknown>[]} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} columns={widget.list_columns} valueLabel={valueLabel} timeRange={widget.time_range} />}
               {widget.chart_style === "pie" && <PieViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} valueLabel={valueLabel} timeRange={widget.time_range} />}
-              {widget.chart_style === "bar" && <BarViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} valueLabel={valueLabel} timeRange={widget.time_range} />}
+              {widget.chart_style === "bar" && <BarViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} valueLabel={valueLabel} timeRange={widget.time_range} barSplitBy={widget.bar_split_by} />}
               {widget.chart_style === "line" && <LineViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} valueLabel={valueLabel} timeRange={widget.time_range} />}
             </>
           )}
@@ -585,7 +585,9 @@ export default function WidgetCard({ widget, creds, dashboards, onEdit, onDelete
 // Chart components
 // ---------------------------------------------------------------------------
 
-type ChartRow = { label: string; displayLabel: string; count: number };
+// label and displayLabel are always present; count is present for regular charts,
+// numeric series keys are present for stacked bar / multi-series line charts.
+type ChartRow = { label: string; displayLabel: string } & Record<string, unknown>;
 
 interface ChartProps {
   data: ChartRow[];
@@ -647,11 +649,13 @@ const tooltipStyle = {
 };
 
 function PieViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: ChartProps) {
+  // Pie always uses the "count" key (non-stacked data source)
+  const pieData = data.map(d => ({ ...d, count: Number(d.count ?? 0) }));
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
         <Pie
-          data={data}
+          data={pieData}
           dataKey="count"
           nameKey="displayLabel"
           cx="50%"
@@ -674,34 +678,51 @@ function PieViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: Cha
   );
 }
 
-function BarViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: ChartProps) {
-  const maxLen = Math.max(...data.map(d => d.displayLabel.length));
-  const bottomMargin = Math.min(maxLen * 5, 120) + 20; // +20 for x-axis label
+function BarViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: ChartProps & { barSplitBy?: string | null }) {
+  const maxLen = Math.max(...data.map(d => String(d.displayLabel).length), 1);
+  // height on XAxis (not margin.bottom on BarChart) is what reserves space for rotated tick labels.
+  // At -90° the label "height" needed = label text width ≈ chars × 6.5px.
+  const tickAreaHeight = Math.min(maxLen * 7, 160);
+
+  // Stacked mode: data rows have series keys instead of a single "count" key
+  const seriesKeys = data.length > 0
+    ? Object.keys(data[0]).filter(k => k !== "label" && k !== "displayLabel" && k !== "count")
+    : [];
+  const isStacked = seriesKeys.length > 0;
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 8, right: 8, bottom: bottomMargin, left: 40 }}>
+      <BarChart data={data} margin={{ top: 8, right: isStacked ? 16 : 8, bottom: 20, left: 40 }}>
         <XAxis
           dataKey="displayLabel"
           tick={{ fill: "#6a7f9c", fontSize: 11 }}
           angle={-40}
           textAnchor="end"
           interval={0}
-          label={{ value: groupBy, position: "insideBottom", offset: -bottomMargin + 16, fill: "#6a7f9c", fontSize: 11 }}
+          height={tickAreaHeight}
         />
         <YAxis
           tick={{ fill: "#6a7f9c", fontSize: 11 }}
-          label={{ value: valueLabel, angle: -90, position: "insideLeft", offset: 10, fill: "#6a7f9c", fontSize: 11 }}
+          label={{ value: isStacked ? "count" : valueLabel, angle: -90, position: "insideLeft", offset: 10, fill: "#6a7f9c", fontSize: 11 }}
         />
-        <Tooltip {...tooltipStyle} formatter={(v) => [v, valueLabel]} labelFormatter={(l) => l} />
-        <Bar
-          dataKey="count"
-          onClick={(entry) => {
-            if (creds) window.open(cbcUrl(creds, groupBy, (entry as unknown as { label: string }).label, dataSource, timeRange), "_blank");
-          }}
-          style={{ cursor: creds ? "pointer" : "default" }}
-        >
-          {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-        </Bar>
+        <Tooltip {...tooltipStyle} labelFormatter={(l) => l} />
+        {isStacked
+          ? seriesKeys.map((key, i) => (
+              <Bar key={key} dataKey={key} stackId="stack" fill={COLORS[i % COLORS.length]} name={key} />
+            ))
+          : (
+            <Bar
+              dataKey="count"
+              onClick={(entry) => {
+                if (creds) window.open(cbcUrl(creds, groupBy, (entry as unknown as { label: string }).label, dataSource, timeRange), "_blank");
+              }}
+              style={{ cursor: creds ? "pointer" : "default" }}
+            >
+              {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+            </Bar>
+          )
+        }
+        {isStacked && <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />}
       </BarChart>
     </ResponsiveContainer>
   );

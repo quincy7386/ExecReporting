@@ -186,6 +186,7 @@ const defaultForm: WidgetPayload = {
   agg_field: null,
   agg_func: "count",
   line_split_by: null,
+  bar_split_by: null,
   row_limit: null,
   position_x: 0,
   position_y: 0,
@@ -216,6 +217,7 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
       [field]: value,
       ...(field === "chart_style" && value !== "list" ? { row_limit: null } : {}),
       ...(field === "chart_style" && value !== "line" ? { line_split_by: null } : {}),
+      ...(field === "chart_style" && value !== "bar" ? { bar_split_by: null } : {}),
     }));
 
   const handleDataSourceChange = (src: DataSource) => {
@@ -346,6 +348,21 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
               placeholder="e.g. severity — up to 6 series"
             />
             <datalist id={`split-by-${form.data_source}`}>
+              {groupByFields.map(f => <option key={f} value={f} />)}
+            </datalist>
+          </Field>
+        )}
+
+        {form.chart_style === "bar" && (
+          <Field label="Stack by field (optional)">
+            <input
+              style={inputStyle}
+              list={`bar-split-by-${form.data_source}`}
+              value={form.bar_split_by ?? ""}
+              onChange={e => set("bar_split_by", e.target.value || null)}
+              placeholder="e.g. device_os — up to 8 segments"
+            />
+            <datalist id={`bar-split-by-${form.data_source}`}>
               {groupByFields.map(f => <option key={f} value={f} />)}
             </datalist>
           </Field>

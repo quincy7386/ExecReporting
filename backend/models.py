@@ -45,6 +45,7 @@ class Widget(Base):
     agg_field = Column(String, nullable=True)   # field to aggregate; null = record count
     agg_func = Column(String, nullable=False, default="count")  # count | sum | avg | max | min
     line_split_by = Column(String, nullable=True)  # line chart only: field to split into multiple series
+    bar_split_by = Column(String, nullable=True)   # bar chart only: field to stack segments by
     enabled = Column(Boolean, nullable=False, default=True)
 
 

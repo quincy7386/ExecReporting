@@ -33,6 +33,7 @@ _MIGRATIONS = [
     ("widgets", "agg_func", "VARCHAR NOT NULL DEFAULT 'count'"),
     ("widgets", "line_split_by", "VARCHAR"),
     ("widgets", "dashboard_id", "INTEGER"),
+    ("widgets", "bar_split_by", "VARCHAR"),
 ]
 
 

@@ -48,6 +48,7 @@ async def _poll_widget(widget_id: int) -> None:
         try:
             row_limit = widget.row_limit or 25
             agg_kwargs = {"agg_field": widget.agg_field, "agg_func": widget.agg_func or "count"}
+            bar_split_by = (widget.bar_split_by or None) if widget.chart_style == "bar" else None
 
             if widget.chart_style == "line":
                 # Line chart always shows events over time regardless of group_by
@@ -60,20 +61,20 @@ async def _poll_widget(widget_id: int) -> None:
                     split_by=widget.line_split_by or None,
                 )
             elif widget.data_source == "devices":
-                result = await fetch_devices_chart(creds, widget.search_query, widget.group_by, sort_order=widget.sort_order, active_only=widget.active_devices_only, **agg_kwargs)
+                result = await fetch_devices_chart(creds, widget.search_query, widget.group_by, sort_order=widget.sort_order, active_only=widget.active_devices_only, bar_split_by=bar_split_by, **agg_kwargs)
             elif widget.data_source == "observations":
-                result = await fetch_observations_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, **agg_kwargs)
+                result = await fetch_observations_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, bar_split_by=bar_split_by, **agg_kwargs)
             elif widget.data_source == "process_search":
-                result = await fetch_process_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, **agg_kwargs)
+                result = await fetch_process_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, bar_split_by=bar_split_by, **agg_kwargs)
             elif widget.data_source == "vulnerability_assessment":
-                result = await fetch_vulnerability_chart(creds, widget.search_query, widget.group_by, sort_order=widget.sort_order, **agg_kwargs)
+                result = await fetch_vulnerability_chart(creds, widget.search_query, widget.group_by, sort_order=widget.sort_order, bar_split_by=bar_split_by, **agg_kwargs)
             elif widget.data_source == "audit_logs":
-                result = await fetch_audit_log_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, **agg_kwargs)
+                result = await fetch_audit_log_chart(creds, widget.search_query, widget.group_by, widget.time_range, sort_order=widget.sort_order, bar_split_by=bar_split_by, **agg_kwargs)
             else:
                 query = widget.search_query
                 if not widget.include_all_alerts:
                     query = f"({query}) AND workflow_status:OPEN"
-                result = await fetch_chart(creds, query, widget.group_by, widget.time_range, sort_order=widget.sort_order, **agg_kwargs)
+                result = await fetch_chart(creds, query, widget.group_by, widget.time_range, sort_order=widget.sort_order, bar_split_by=bar_split_by, **agg_kwargs)
 
             if widget.chart_style == "list":
                 result = result[:row_limit]
@@ -129,7 +130,7 @@ def schedule_widget(widget: Widget) -> None:
             next_run_time=first_run,
         )
         # Trigger an immediate poll so changes are reflected right away
-        scheduler.add_job(_poll_widget, args=[widget.id])
+        scheduler.add_job(_poll_widget, args=[widget.id], misfire_grace_time=30)
 
 
 def unschedule_widget(widget_id: int) -> None:

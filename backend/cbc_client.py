@@ -125,6 +125,62 @@ def _group_results(
     return [{"label": label, "count": value} for label, value in aggregated]
 
 
+def _group_results_stacked(
+    results: list[dict],
+    group_by: str,
+    split_by: str,
+    sort_order: str = "desc",
+    max_split: int = 8,
+) -> list[dict[str, Any]]:
+    """Two-field aggregation for stacked bar charts.
+
+    Returns [{label: group_val, split_val1: count, split_val2: count, ...}]
+    with the top max_split values of split_by as segments.
+    """
+    # Determine top N values of the split field
+    split_counts: collections.Counter = collections.Counter()
+    for record in results:
+        v = _get_nested(record, split_by)
+        if v is None:
+            continue
+        if isinstance(v, list):
+            for item in v:
+                split_counts[str(item)] += 1
+        else:
+            split_counts[str(v)] += 1
+
+    top_splits = [v for v, _ in split_counts.most_common(max_split)]
+    if not top_splits:
+        return []
+
+    # Build cross-tabulation
+    data: dict[str, dict[str, int]] = {}
+    for record in results:
+        grp = _get_nested(record, group_by)
+        if isinstance(grp, list):
+            grp_keys = [str(g) for g in grp] if grp else ["(none)"]
+        else:
+            grp_keys = [str(grp) if grp is not None else "(none)"]
+
+        sv = _get_nested(record, split_by)
+        if isinstance(sv, list):
+            split_vals = [str(v) for v in sv if str(v) in top_splits]
+        else:
+            split_vals = [str(sv)] if sv is not None and str(sv) in top_splits else []
+
+        for gk in grp_keys:
+            if gk not in data:
+                data[gk] = {s: 0 for s in top_splits}
+            for sv_str in split_vals:
+                data[gk][sv_str] += 1
+
+    rows = [{"label": lbl, **seg, "__total__": sum(seg.values())} for lbl, seg in data.items()]
+    rows.sort(key=lambda x: x["__total__"], reverse=(sort_order != "asc"))
+    for row in rows:
+        del row["__total__"]
+    return rows
+
+
 # ---------------------------------------------------------------------------
 # Alerts
 # ---------------------------------------------------------------------------
@@ -170,6 +226,7 @@ async def fetch_chart(
     sort_order: str = "desc",
     agg_field: str | None = None,
     agg_func: str = "count",
+    bar_split_by: str | None = None,
     max_fetch: int = 10_000,
 ) -> list[dict[str, Any]]:
     batch = 100
@@ -188,6 +245,8 @@ async def fetch_chart(
         if start > num_available:
             break
 
+    if bar_split_by:
+        return _group_results_stacked(results, group_by, bar_split_by, sort_order)
     return _group_results(results, group_by, sort_order, agg_field, agg_func)
 
 
@@ -237,6 +296,7 @@ async def fetch_devices_chart(
     agg_field: str | None = None,
     agg_func: str = "count",
     active_only: bool = False,
+    bar_split_by: str | None = None,
     max_fetch: int = 10_000,
 ) -> list[dict[str, Any]]:
     batch = 100
@@ -255,6 +315,8 @@ async def fetch_devices_chart(
         if start >= num_found:
             break
 
+    if bar_split_by:
+        return _group_results_stacked(results, group_by, bar_split_by, sort_order)
     return _group_results(results, group_by, sort_order, agg_field, agg_func)
 
 
@@ -334,6 +396,7 @@ async def fetch_observations_chart(
     sort_order: str = "desc",
     agg_field: str | None = None,
     agg_func: str = "count",
+    bar_split_by: str | None = None,
     max_fetch: int = 10_000,
 ) -> list[dict[str, Any]]:
     job_id = await _submit_observations_job(creds, query, time_range)
@@ -355,6 +418,8 @@ async def fetch_observations_chart(
         if start >= num_available:
             break
 
+    if bar_split_by:
+        return _group_results_stacked(results, group_by, bar_split_by, sort_order)
     return _group_results(results, group_by, sort_order, agg_field, agg_func)
 
 
@@ -432,6 +497,7 @@ async def fetch_process_chart(
     sort_order: str = "desc",
     agg_field: str | None = None,
     agg_func: str = "count",
+    bar_split_by: str | None = None,
     max_fetch: int = 10_000,
 ) -> list[dict[str, Any]]:
     job_id = await _submit_process_job(creds, query, time_range)
@@ -453,6 +519,8 @@ async def fetch_process_chart(
         if start >= num_available:
             break
 
+    if bar_split_by:
+        return _group_results_stacked(results, group_by, bar_split_by, sort_order)
     return _group_results(results, group_by, sort_order, agg_field, agg_func)
 
 
@@ -502,6 +570,7 @@ async def fetch_vulnerability_chart(
     sort_order: str = "desc",
     agg_field: str | None = None,
     agg_func: str = "count",
+    bar_split_by: str | None = None,
     max_fetch: int = 10_000,
 ) -> list[dict[str, Any]]:
     batch = 1000
@@ -520,6 +589,8 @@ async def fetch_vulnerability_chart(
         if start >= num_found:
             break
 
+    if bar_split_by:
+        return _group_results_stacked(results, group_by, bar_split_by, sort_order)
     return _group_results(results, group_by, sort_order, agg_field, agg_func)
 
 
@@ -570,6 +641,7 @@ async def fetch_audit_log_chart(
     sort_order: str = "desc",
     agg_field: str | None = None,
     agg_func: str = "count",
+    bar_split_by: str | None = None,
     max_fetch: int = 10_000,
 ) -> list[dict[str, Any]]:
     batch = 500
@@ -588,6 +660,8 @@ async def fetch_audit_log_chart(
         if start >= num_available:
             break
 
+    if bar_split_by:
+        return _group_results_stacked(results, group_by, bar_split_by, sort_order)
     return _group_results(results, group_by, sort_order, agg_field, agg_func)
 
 
