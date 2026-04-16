@@ -8,6 +8,7 @@ A self-hosted web application for visualizing Carbon Black Cloud data. Originall
 - **Six data sources**: Alerts, Devices, Observations (NGAV), Process Search (Enterprise EDR), Vulnerability Assessment, and Audit Logs
 - **Four chart types**: Bar, Pie, Line (time-series), and List (table)
 - **Time-series line charts** that bucket events over the selected time window, with optional split-by field for multi-series comparison (e.g. alert severity trends over time)
+- **Stacked bar charts** with an optional secondary group-by field — bars show the primary category totals, segments show the breakdown by a second field (e.g. alert severity stacked by OS type)
 - **Aggregation support**: count, sum, avg, max, or min of any numeric field, grouped by any categorical field
 - **MITRE ATT&CK enrichment**: T-codes in group-by results are automatically expanded with their technique name (including sub-techniques)
 - **Clickable chart elements** that link directly to the relevant filtered view in the CBC UI
@@ -120,3 +121,4 @@ Each widget has:
 - **Aggregate function** — count (default), sum, avg, max, or min of a numeric field
 - **Poll interval** — how frequently the backend re-fetches data from CBC
 - **Split by field** (Line charts only) — plots a separate line per value of this field, up to 6 series
+- **Stack by field** (Bar charts only) — segments each bar by a second field, up to 8 segments; best with low-cardinality fields (e.g. OS type, device status)
