@@ -283,11 +283,11 @@ async def _facet_devices(
     query: str,
     group_by: str,
     active_only: bool = False,
-    rows: int = 100,
 ) -> list[dict[str, Any]]:
     """Single-call device facet query — returns exact counts for any field, no pagination."""
     url = f"{_base_url(creds)}/appservices/v6/orgs/{creds.org_key}/devices/_facet"
-    payload: dict[str, Any] = {"terms": {"fields": [group_by], "rows": rows}}
+    # rows=500 on terms to avoid truncation on high-cardinality fields like os_version
+    payload: dict[str, Any] = {"terms": {"fields": [group_by], "rows": 500}}
     if query.strip() and query.strip() != "*":
         payload["query"] = query
     if active_only:

@@ -19,15 +19,28 @@ const ALERT_GROUP_BY_FIELDS = [
 ];
 
 const DEVICE_GROUP_BY_FIELDS = [
-  // Health / status
-  "status","quarantined","bypass","sensor_out_of_date","sensor_states",
-  "av_status","av_update_servers","last_internal_ip_address",
-  // Policy / config
-  "current_sensor_policy_name","policy_name","deployment_type","target_priority",
-  // OS / hardware
-  "os","os_version","sensor_version",
-  // Identity / location
-  "last_location","login_user_name",
+  // Status / health — QUARANTINE, BYPASS, SENSOR_OUTOFDATE etc. are all values of "status"
+  "status",
+  "signature_status",
+  "host_based_firewall_status",
+  "golden_device_status",
+  "compliance_status",
+  // OS / platform
+  "os",
+  "os_version",
+  "deployment_type",
+  "infrastructure_provider",
+  "virtualization_provider",
+  // Policy / sensor
+  "policy_id",
+  "current_sensor_policy_name",
+  "sensor_version",
+  "target_priority",
+  // Identity / directory
+  "ad_domain",
+  "ad_org_unit",
+  "last_location",
+  "login_user_name",
 ];
 
 // All fields tagged OBSERVATION or OBSERVATION_DETAILS per CBC platform search fields docs
