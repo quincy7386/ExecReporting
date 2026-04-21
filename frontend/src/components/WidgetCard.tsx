@@ -649,30 +649,35 @@ const tooltipStyle = {
 };
 
 function PieViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: ChartProps) {
-  // Pie always uses the "count" key (non-stacked data source)
   const pieData = data.map(d => ({ ...d, count: Number(d.count ?? 0) }));
+  // Only render inline labels for slices >= 8% — smaller slices show on hover via tooltip.
+  // All slices appear in the Legend below.
+  const renderLabel = ({ name, percent }: { name?: string; percent?: number }) =>
+    (percent ?? 0) >= 0.08 ? `${name} (${((percent ?? 0) * 100).toFixed(0)}%)` : "";
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
+      <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
         <Pie
           data={pieData}
           dataKey="count"
           nameKey="displayLabel"
           cx="50%"
-          cy="50%"
-          outerRadius="55%"
+          cy="42%"
+          outerRadius="50%"
           onClick={(entry: { name?: string; payload?: { label: string } }) => {
             if (!creds) return;
             const raw = entry.payload?.label ?? entry.name ?? "";
             if (raw) window.open(cbcUrl(creds, groupBy, raw, dataSource, timeRange), "_blank");
           }}
           style={{ cursor: creds ? "pointer" : "default" }}
-          label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-          labelLine={true}
+          label={renderLabel}
+          labelLine={false}
         >
-          {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+          {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
         </Pie>
         <Tooltip {...tooltipStyle} formatter={(v) => [v, valueLabel]} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
       </PieChart>
     </ResponsiveContainer>
   );
