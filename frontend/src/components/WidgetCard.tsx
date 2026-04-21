@@ -686,7 +686,7 @@ function BarViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: Cha
 
   // Stacked mode: data rows have series keys instead of a single "count" key
   const seriesKeys = data.length > 0
-    ? Object.keys(data[0]).filter(k => k !== "label" && k !== "displayLabel" && k !== "count")
+    ? Object.keys(data[0]).filter(k => k !== "label" && k !== "displayLabel" && k !== "count").sort()
     : [];
   const isStacked = seriesKeys.length > 0;
 
@@ -735,7 +735,7 @@ function LineViz({ data, valueLabel }: ChartProps) {
 
   // Detect multi-series: if data rows have keys other than label/displayLabel/count
   const seriesKeys = data.length > 0
-    ? Object.keys(data[0]).filter(k => k !== "label" && k !== "displayLabel" && k !== "count")
+    ? Object.keys(data[0]).filter(k => k !== "label" && k !== "displayLabel" && k !== "count").sort()
     : [];
   const isMultiSeries = seriesKeys.length > 0;
 

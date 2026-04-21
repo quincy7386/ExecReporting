@@ -5,6 +5,7 @@ Each enabled widget gets a job that fires on its poll_interval.
 Jobs fetch data from CBC and write to widget_cache.
 The scheduler is started/stopped via the FastAPI lifespan.
 """
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone, timedelta
@@ -34,6 +35,19 @@ scheduler = AsyncIOScheduler()
 # ---------------------------------------------------------------------------
 
 async def _poll_widget(widget_id: int) -> None:
+    """Enforce a hard 2-minute timeout so a stalled job never blocks its slot indefinitely."""
+    try:
+        await asyncio.wait_for(_do_poll(widget_id), timeout=120.0)
+    except asyncio.TimeoutError:
+        logger.warning("Widget %d poll timed out after 120s", widget_id)
+        db: Session = SessionLocal()
+        try:
+            _write_cache(db, widget_id, data=None, error="Poll timed out (>120s) — CBC API may be slow or unreachable")
+        finally:
+            db.close()
+
+
+async def _do_poll(widget_id: int) -> None:
     db: Session = SessionLocal()
     try:
         widget: Widget | None = db.get(Widget, widget_id)
@@ -83,8 +97,9 @@ async def _poll_widget(widget_id: int) -> None:
             logger.info("Polled widget %d OK", widget_id)
 
         except Exception as e:
-            logger.warning("Widget %d poll error: %s", widget_id, e)
-            _write_cache(db, widget_id, data=None, error=str(e))
+            err = str(e) or type(e).__name__
+            logger.warning("Widget %d poll error: %s", widget_id, err)
+            _write_cache(db, widget_id, data=None, error=err)
 
     finally:
         db.close()
