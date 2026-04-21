@@ -1,10 +1,14 @@
 import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.pool import NullPool
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/app.db")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# NullPool: each Session opens/closes its own connection directly.
+# SQLite connections are file-based and cheap; pooling only adds limits
+# and contention when many async poll jobs run concurrently.
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
