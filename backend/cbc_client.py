@@ -278,6 +278,26 @@ async def _search_devices(
         return resp.json()
 
 
+async def _facet_devices(
+    creds: Credentials,
+    query: str,
+    group_by: str,
+    active_only: bool = False,
+    rows: int = 100,
+) -> list[dict[str, Any]]:
+    """Single-call device facet query — returns exact counts for any field, no pagination."""
+    url = f"{_base_url(creds)}/appservices/v6/orgs/{creds.org_key}/devices/_facet"
+    payload: dict[str, Any] = {"terms": {"fields": [group_by], "rows": rows}}
+    if query.strip() and query.strip() != "*":
+        payload["query"] = query
+    if active_only:
+        payload["criteria"] = {"status": ["ACTIVE"]}
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(url, headers=_auth_header(creds), json=payload)
+        resp.raise_for_status()
+        return resp.json().get("results", [])
+
+
 async def fetch_devices_list(
     creds: Credentials,
     query: str,
@@ -299,6 +319,21 @@ async def fetch_devices_chart(
     bar_split_by: str | None = None,
     max_fetch: int = 10_000,
 ) -> list[dict[str, Any]]:
+    # Facets API: single call, exact counts at any scale, supports all device fields.
+    # Use it for simple count queries. Fall back to _search for custom agg or stacked bars.
+    if (not agg_field or agg_func == "count") and not bar_split_by:
+        facets = await _facet_devices(creds, query, group_by, active_only=active_only)
+        rows: list[dict[str, Any]] = []
+        for facet in facets:
+            if facet.get("field") == group_by:
+                for v in facet.get("values", []):
+                    label = str(v.get("name") or v.get("id") or "(none)")
+                    rows.append({"label": label, "count": v.get("total", 0)})
+                break
+        rows.sort(key=lambda x: x["count"], reverse=(sort_order != "asc"))
+        return rows
+
+    # Custom aggregation or stacked bar — fetch full records and aggregate client-side
     batch = 100
     results: list[dict] = []
     start = 0

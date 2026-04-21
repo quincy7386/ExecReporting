@@ -19,9 +19,15 @@ const ALERT_GROUP_BY_FIELDS = [
 ];
 
 const DEVICE_GROUP_BY_FIELDS = [
-  "av_status","current_sensor_policy_name","deployment_type","last_location",
-  "login_user_name","os","os_version","policy_name","sensor_version","status",
-  "target_priority",
+  // Health / status
+  "status","quarantined","bypass","sensor_out_of_date","sensor_states",
+  "av_status","av_update_servers","last_internal_ip_address",
+  // Policy / config
+  "current_sensor_policy_name","policy_name","deployment_type","target_priority",
+  // OS / hardware
+  "os","os_version","sensor_version",
+  // Identity / location
+  "last_location","login_user_name",
 ];
 
 // All fields tagged OBSERVATION or OBSERVATION_DETAILS per CBC platform search fields docs
