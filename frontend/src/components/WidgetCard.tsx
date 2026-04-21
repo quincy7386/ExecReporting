@@ -558,7 +558,7 @@ export default function WidgetCard({ widget, creds, dashboards, onEdit, onDelete
             <>
               {widget.chart_style === "list" && <ListChart data={result.data as Record<string, unknown>[]} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} columns={widget.list_columns} valueLabel={valueLabel} timeRange={widget.time_range} />}
               {widget.chart_style === "pie" && <PieViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} valueLabel={valueLabel} timeRange={widget.time_range} />}
-              {widget.chart_style === "bar" && <BarViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} valueLabel={valueLabel} timeRange={widget.time_range} barSplitBy={widget.bar_split_by} />}
+              {widget.chart_style === "bar" && <BarViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} valueLabel={valueLabel} timeRange={widget.time_range} barGroupStyle={widget.bar_group_style} />}
               {widget.chart_style === "line" && <LineViz data={data} creds={creds} groupBy={widget.group_by} dataSource={widget.data_source} valueLabel={valueLabel} timeRange={widget.time_range} />}
             </>
           )}
@@ -678,7 +678,7 @@ function PieViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: Cha
   );
 }
 
-function BarViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: ChartProps & { barSplitBy?: string | null }) {
+function BarViz({ data, creds, groupBy, dataSource, valueLabel, timeRange, barGroupStyle }: ChartProps & { barGroupStyle?: string }) {
   const maxLen = Math.max(...data.map(d => String(d.displayLabel).length), 1);
   // height on XAxis (not margin.bottom on BarChart) is what reserves space for rotated tick labels.
   // At -90° the label "height" needed = label text width ≈ chars × 6.5px.
@@ -708,7 +708,7 @@ function BarViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: Cha
         <Tooltip {...tooltipStyle} labelFormatter={(l) => l} />
         {isStacked
           ? seriesKeys.map((key, i) => (
-              <Bar key={key} dataKey={key} stackId="stack" fill={COLORS[i % COLORS.length]} name={key} />
+              <Bar key={key} dataKey={key} stackId={barGroupStyle === "grouped" ? undefined : "stack"} fill={COLORS[i % COLORS.length]} name={key} />
             ))
           : (
             <Bar

@@ -38,6 +38,7 @@ _MIGRATIONS = [
     ("widgets", "line_split_by", "VARCHAR"),
     ("widgets", "dashboard_id", "INTEGER"),
     ("widgets", "bar_split_by", "VARCHAR"),
+    ("widgets", "bar_group_style", "VARCHAR NOT NULL DEFAULT 'stacked'"),
 ]
 
 

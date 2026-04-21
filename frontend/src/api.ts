@@ -61,6 +61,7 @@ export interface Widget {
   agg_func: string;
   line_split_by: string | null;
   bar_split_by: string | null;
+  bar_group_style: string;
   row_limit: number | null;
   position_x: number;
   position_y: number;

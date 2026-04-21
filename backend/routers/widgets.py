@@ -31,6 +31,7 @@ class WidgetIn(BaseModel):
     agg_func: str = "count"
     line_split_by: Optional[str] = None
     bar_split_by: Optional[str] = None
+    bar_group_style: str = "stacked"
     row_limit: Optional[int] = None
     position_x: int = 0
     position_y: int = 0

@@ -187,6 +187,7 @@ const defaultForm: WidgetPayload = {
   agg_func: "count",
   line_split_by: null,
   bar_split_by: null,
+  bar_group_style: "stacked",
   row_limit: null,
   position_x: 0,
   position_y: 0,
@@ -354,7 +355,7 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
         )}
 
         {form.chart_style === "bar" && (
-          <Field label="Stack by field (optional)">
+          <Field label="Split by field (optional)">
             <input
               style={inputStyle}
               list={`bar-split-by-${form.data_source}`}
@@ -365,6 +366,15 @@ export default function WidgetEditor({ initial, onSave, onCancel, error }: Props
             <datalist id={`bar-split-by-${form.data_source}`}>
               {groupByFields.map(f => <option key={f} value={f} />)}
             </datalist>
+          </Field>
+        )}
+
+        {form.chart_style === "bar" && form.bar_split_by && (
+          <Field label="Bar style">
+            <select style={inputStyle} value={form.bar_group_style} onChange={e => set("bar_group_style", e.target.value)}>
+              <option value="stacked">Stacked — segments on top of each other</option>
+              <option value="grouped">Grouped — segments side by side</option>
+            </select>
           </Field>
         )}
 
