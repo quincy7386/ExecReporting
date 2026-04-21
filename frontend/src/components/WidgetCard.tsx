@@ -10,7 +10,18 @@ import {
 import { getWidgetData } from "../api";
 import type { Widget, WidgetData, Credentials, Dashboard } from "../api";
 
-const COLORS = ["#4a9fd4", "#f0a030", "#2db87a", "#e05c5c", "#7ab8e8", "#a78bfa", "#34d399", "#fb923c"];
+const COLORS = [
+  "#3b82f6", // blue
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#ef4444", // red
+  "#8b5cf6", // violet
+  "#f97316", // orange
+  "#06b6d4", // cyan
+  "#ec4899", // pink
+  "#84cc16", // lime
+  "#6366f1", // indigo
+];
 
 // Fields whose values are file paths — strip to basename for display
 const PATH_FIELDS = new Set([
@@ -648,7 +659,7 @@ const tooltipStyle = {
   itemStyle: { color: "var(--text)" },
 };
 
-function PieViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: ChartProps) {
+function PieViz({ data, creds, groupBy, dataSource, timeRange }: ChartProps) {
   const pieData = data.map(d => ({ ...d, count: Number(d.count ?? 0) }));
   // Only render inline labels for slices >= 8% — smaller slices show on hover via tooltip.
   // All slices appear in the Legend below.
@@ -676,7 +687,7 @@ function PieViz({ data, creds, groupBy, dataSource, valueLabel, timeRange }: Cha
         >
           {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
         </Pie>
-        <Tooltip {...tooltipStyle} formatter={(v) => [v, valueLabel]} />
+        <Tooltip {...tooltipStyle} formatter={(v, name) => [v, name]} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
       </PieChart>
     </ResponsiveContainer>
